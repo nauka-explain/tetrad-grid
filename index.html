@@ -14,6 +14,8 @@
     canvas {
       border: 1px solid #ccc;
       margin-top: 20px;
+      transform: scale(0.5); /* Уменьшаем размер изображения на 50% */
+      transform-origin: top left; /* Ориентируем уменьшение от верхнего левого угла */
     }
     button {
       margin-top: 20px;
@@ -48,7 +50,7 @@
     <button onclick="drawGrid()">Обновить сетку</button>
   </div>
 
-  <canvas id="gridCanvas" width="1200" height="1000"></canvas>
+  <canvas id="gridCanvas" width="6000" height="5000"></canvas>
   <button onclick="downloadImage()">Скачать PNG</button>
 
   <script>
