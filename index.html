@@ -3,11 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Генератор тетрадной сетки</title>
-  <!-- Используем аватарку GitHub профиля в качестве favicon -->
-  <!-- Замените USERNAME на ваше имя пользователя GitHub, например, johndoe -->
-  <link rel="icon" type="image/png" href="https://github.com/nauka-explain.png">
-  <!-- Альтернатива с уменьшенным размером (32x32): -->
-  <!-- <link rel="icon" type="image/png" href="https://github.com/USERNAME.png?s=32"> -->
+  <!-- Favicon будет установлен динамически через JavaScript -->
+  <link id="favicon" rel="icon" type="image/png" href="">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -414,6 +411,42 @@
       };
     }
 
+    // Функция для создания круглого favicon из аватарки GitHub
+    function makeCircularFavicon() {
+      const githubUsername = "nauka-explain"; // Замените на ваше имя пользователя GitHub, например, "johndoe"
+      const avatarUrl = `https://github.com/${githubUsername}.png`;
+      const faviconSize = 64; // Размер favicon (64x64 пикселей)
+
+      const img = new Image();
+      img.crossOrigin = "Anonymous"; // Для загрузки изображения с внешнего домена
+      img.src = avatarUrl;
+
+      img.onload = function() {
+        const canvas = document.createElement("canvas");
+        canvas.width = faviconSize;
+        canvas.height = faviconSize;
+        const ctx = canvas.getContext("2d");
+
+        // Создаём круглую маску
+        ctx.beginPath();
+        ctx.arc(faviconSize / 2, faviconSize / 2, faviconSize / 2, 0, Math.PI * 2);
+        ctx.clip();
+
+        // Рисуем аватарку, масштабируя её до faviconSize
+        ctx.drawImage(img, 0, 0, faviconSize, faviconSize);
+
+        // Устанавливаем favicon
+        const faviconLink = document.getElementById("favicon");
+        faviconLink.href = canvas.toDataURL("image/png");
+      };
+
+      img.onerror = function() {
+        console.error("Не удалось загрузить аватарку GitHub для favicon");
+        // Можно задать резервный favicon, если аватарка не загрузилась
+        // document.getElementById("favicon").href = "/favicon.png";
+      };
+    }
+
     function updateOpacityLabel() {
       document.getElementById("opacityValue").textContent = document.getElementById("opacity").value + "%";
     }
@@ -591,6 +624,7 @@
     });
 
     // Инициализация
+    makeCircularFavicon(); // Создаём круглый favicon
     updateOpacityLabel();
     validateInput(document.getElementById("canvasWidth"));
     validateInput(document.getElementById("canvasHeight"));
