@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Генератор тетрадной сетки</title>
-<link rel="icon" type="image/x-icon" href="/favicon.ico?v=1">
+  <link rel="icon" type="image/png" href="/favicon.png?v=1">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -56,6 +56,7 @@
       flex-direction: column;
       font-weight: bold;
       font-size: 14px;
+      position: relative;
     }
 
     select,
@@ -168,8 +169,14 @@
       text-align: center;
     }
 
-    .controls button:hover {
+    .controls button:hover:not(:disabled) {
       background: #0056b3;
+    }
+
+    .controls button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+      color: #666666;
     }
 
     .controls select {
@@ -223,6 +230,11 @@
       line-height: 1.5;
     }
 
+    .notes ul {
+      padding-left: 20px;
+      margin: 0;
+    }
+
     .footer {
       margin-top: 15px;
       font-size: 14px;
@@ -242,6 +254,45 @@
     .footer a:hover {
       text-decoration: underline;
     }
+
+    .error-message {
+      color: #ff4444;
+      font-size: 12px;
+      margin-top: 5px;
+      display: none;
+    }
+
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: help;
+      margin-left: 5px;
+      color: #007bff;
+      font-weight: bold;
+    }
+
+    .tooltip:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    body.dark .tooltip {
+      color: #66b3ff;
+    }
+
+    body.dark .tooltip:hover::after {
+      background: #555;
+    }
   </style>
 </head>
 <body class="light">
@@ -253,6 +304,10 @@
         Размер холста
         <select id="canvasSize" onchange="updateCanvasSize()" aria-label="Выбор размера холста">
           <option value="custom">Пользовательский</option>
+          <option value="hd">HD (1280x720 пикселей)</option>
+          <option value="fullhd">FullHD (1920x1080 пикселей)</option>
+          <option value="2k">2K (2560x1440 пикселей)</option>
+          <option value="4k">4K (3840x2160 пикселей)</option>
           <option value="a5">A5 Верт. (1748x2480 пикселей)</option>
           <option value="a4">A4 Верт. (2480x3508 пикселей)</option>
           <option value="a3">A3 Верт. (3508x4961 пикселей)</option>
@@ -265,29 +320,34 @@
     <div class="row">
       <label>
         Ширина холста (пиксели)
-        <input type="number" id="canvasWidth" value="6000" min="1" max="12000" oninput="generateGrid(); document.getElementById('canvasSize').value='custom'" aria-label="Ширина холста в пикселях">
+        <input type="number" id="canvasWidth" value="6000" min="1" max="12000" oninput="validateInput(this); debouncedGenerateGrid();" aria-label="Ширина холста в пикселях">
+        <span class="error-message" id="canvasWidthError">Значение должно быть от 1 до 12000</span>
       </label>
       <label>
         Высота холста (пиксели)
-        <input type="number" id="canvasHeight" value="5000" min="1" max="12000" oninput="generateGrid(); document.getElementById('canvasSize').value='custom'" aria-label="Высота холста в пикселях">
+        <input type="number" id="canvasHeight" value="5000" min="1" max="12000" oninput="validateInput(this); debouncedGenerateGrid();" aria-label="Высота холста в пикселях">
+        <span class="error-message" id="canvasHeightError">Значение должно быть от 1 до 12000</span>
       </label>
     </div>
     
     <div class="row">
       <label>
-        Размер клетки (пиксели)
-        <input type="number" id="gridSize" value="70" min="1" max="1000" oninput="generateGrid()" aria-label="Размер клетки в пикселях">
+        <span style="display: flex; align-items: center;">
+          <span>Размер клетки (пиксели)</span>
+          <span class="tooltip" data-tooltip="Речь идёт о стороне квадрата клетки">?</span>
+        </span>
+        <input type="number" id="gridSize" value="70" min="1" max="1000" oninput="debouncedGenerateGrid()" aria-label="Размер клетки в пикселях">
       </label>
       <label>
         Толщина линий (пиксели)
-        <input type="number" id="lineWidth" value="1" min="1" max="5" oninput="generateGrid()" aria-label="Толщина линий решетки в пикселях">
+        <input type="number" id="lineWidth" value="1" min="1" max="5" oninput="debouncedGenerateGrid()" aria-label="Толщина линий решетки в пикселях">
       </label>
     </div>
 
     <div class="row">
       <label>
         Цвет решетки
-        <input type="color" id="gridColor" value="#ADD8E6" oninput="generateGrid()" aria-label="Цвет решетки">
+        <input type="color" id="gridColor" value="#ADD8E6" oninput="debouncedGenerateGrid()" aria-label="Цвет решетки">
         <div class="color-presets">
           <div class="color-swatch" style="background-color: #ADD8E6;" onclick="event.preventDefault(); setColor('#ADD8E6')" title="Голубой" role="button" aria-label="Выбрать голубой цвет"></div>
           <div class="color-swatch" style="background-color: #90EE90;" onclick="event.preventDefault(); setColor('#90EE90')" title="Зеленый" role="button" aria-label="Выбрать зеленый цвет"></div>
@@ -301,7 +361,7 @@
         <div class="slider-label">
           <span>Непрозрачность решетки</span>
         </div>
-        <input type="range" id="opacity" min="0" max="100" step="10" value="100" oninput="updateOpacityLabel(); generateGrid()" aria-label="Непрозрачность решетки в процентах">
+        <input type="range" id="opacity" min="0" max="100" step="10" value="100" oninput="updateOpacityLabel(); debouncedGenerateGrid()" aria-label="Непрозрачность решетки в процентах">
         <div class="slider-percentage" id="opacityValue">100%</div>
       </div>
     </div>
@@ -316,24 +376,40 @@
       </div>
       <div class="controls-second-column">
         <button onclick="resetParameters()" aria-label="Сбросить параметры к начальным значениям">Сбросить параметры</button>
-        <button onclick="downloadImage()" aria-label="Скачать изображение в формате PNG">Скачать PNG</button>
+        <button id="downloadButton" onclick="downloadImage()" aria-label="Скачать изображение в формате PNG" disabled>Скачать PNG</button>
       </div>
     </div>
 
     <div class="file-size" id="fileSize">Размер файла: 0 КБ</div>
 
     <div class="notes">
-      <strong>Примечания:</strong><br>
-      • Максимальный размер холста — 12000×12000 пикселей<br>
-      • Изменения параметров применяются автоматически
+      <strong>Примечания:</strong>
+      <ul>
+        <li>Максимальный размер холста — 12000×12000 пикселей</li>
+        <li>Не вводите слишком маленький размер клетки или слишком большую толщину линии</li>
+        <li>Изменения параметров применяются автоматически</li>
+      </ul>
     </div>
 
     <div class="footer">
-      Программа подготовлена специально для тгк <a href="https://t.me/nauka_explain" target="_blank"><i>Поясни за науку</i></a>
+      Программа подготовлена специально для телеграм-канала <a href="https://t.me/nauka_explain" target="_blank"><i>Поясни за науку</i></a>
     </div>
   </div>
 
   <script>
+    // Debounce функция для ограничения частоты вызовов
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
     function updateOpacityLabel() {
       document.getElementById("opacityValue").textContent = document.getElementById("opacity").value + "%";
     }
@@ -343,7 +419,19 @@
       const widthInput = document.getElementById("canvasWidth");
       const heightInput = document.getElementById("canvasHeight");
 
-      if (canvasSize === "a5") {
+      if (canvasSize === "hd") {
+        widthInput.value = 1280;
+        heightInput.value = 720;
+      } else if (canvasSize === "fullhd") {
+        widthInput.value = 1920;
+        heightInput.value = 1080;
+      } else if (canvasSize === "2k") {
+        widthInput.value = 2560;
+        heightInput.value = 1440;
+      } else if (canvasSize === "4k") {
+        widthInput.value = 3840;
+        heightInput.value = 2160;
+      } else if (canvasSize === "a5") {
         widthInput.value = 1748;
         heightInput.value = 2480;
       } else if (canvasSize === "a4") {
@@ -356,7 +444,9 @@
         widthInput.value = 4961;
         heightInput.value = 7017;
       }
-      generateGrid();
+      validateInput(widthInput);
+      validateInput(heightInput);
+      debouncedGenerateGrid();
     }
 
     function swapOrientation() {
@@ -366,7 +456,9 @@
       widthInput.value = heightInput.value;
       heightInput.value = temp;
       document.getElementById("canvasSize").value = "custom";
-      generateGrid();
+      validateInput(widthInput);
+      validateInput(heightInput);
+      debouncedGenerateGrid();
     }
 
     function setColor(color) {
@@ -376,6 +468,17 @@
       colorInput.dispatchEvent(event);
     }
 
+    function validateInput(input) {
+      const errorElement = document.getElementById(input.id + "Error");
+      const value = parseInt(input.value);
+      if (isNaN(value) || value < 1 || value > 12000) {
+        errorElement.style.display = "block";
+        input.value = Math.min(Math.max(1, value || 1), 12000); // Ограничиваем значение
+      } else {
+        errorElement.style.display = "none";
+      }
+    }
+
     function generateGrid() {
       const width = parseInt(document.getElementById("canvasWidth").value);
       const height = parseInt(document.getElementById("canvasHeight").value);
@@ -383,9 +486,10 @@
       const lineWidth = parseInt(document.getElementById("lineWidth").value);
       const color = document.getElementById("gridColor").value;
       const opacity = parseInt(document.getElementById("opacity").value);
+      const downloadButton = document.getElementById("downloadButton");
 
-      if (width > 12000 || height > 12000) {
-        alert("Превышено ограничение: максимальный размер 12000x12000 пикселей");
+      if (isNaN(width) || isNaN(height) || width < 1 || height < 1 || width > 12000 || height > 12000) {
+        downloadButton.disabled = true;
         return;
       }
 
@@ -415,12 +519,14 @@
         window.generatedImageBlob = blob;
         const sizeKB = (blob.size / 1024).toFixed(2);
         document.getElementById("fileSize").textContent = `Размер файла: ${sizeKB} КБ`;
+        downloadButton.disabled = false; // Активируем кнопку
       }, "image/png");
     }
 
+    const debouncedGenerateGrid = debounce(generateGrid, 300);
+
     function downloadImage() {
       if (!window.generatedImageBlob) {
-        alert("Сначала задайте параметры сетки");
         return;
       }
 
@@ -439,7 +545,9 @@
       document.getElementById("gridColor").value = "#ADD8E6";
       document.getElementById("opacity").value = 100;
       updateOpacityLabel();
-      generateGrid();
+      validateInput(document.getElementById("canvasWidth"));
+      validateInput(document.getElementById("canvasHeight"));
+      debouncedGenerateGrid();
     }
 
     function hexToRGBA(hex, alpha) {
@@ -470,9 +578,19 @@
       }
     }
 
+    // Закрытие палитры цвета при клике вне
+    document.addEventListener("click", function(event) {
+      const colorInput = document.getElementById("gridColor");
+      if (!colorInput.contains(event.target)) {
+        colorInput.blur();
+      }
+    });
+
     // Инициализация
     updateOpacityLabel();
-    generateGrid();
+    validateInput(document.getElementById("canvasWidth"));
+    validateInput(document.getElementById("canvasHeight"));
+    debouncedGenerateGrid();
 
     // Установка темы по умолчанию
     if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
